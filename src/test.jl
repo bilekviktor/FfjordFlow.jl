@@ -198,3 +198,9 @@ end
 cb()
 
 Flux.Optimise.train!(loss_adjoint, ps, _data, opt, cb = cb)
+
+
+
+include("FfjordFlow.jl")
+
+f

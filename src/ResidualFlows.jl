@@ -1,5 +1,5 @@
-using Flux, Distributions, Plots, LinearAlgebra
-using ToyProblems, MLDataPattern, Zygote
+using Flux, Distributions, LinearAlgebra
+using Zygote
 
 log_normal(x::AbstractVector) = - sum(x.^2) / 2 - length(x)*log(2π) / 2
 log_normal(x) = -0.5f0 .* sum(x.^2, dims = 1) .- (size(x,1)*log(Float32(2π)) / 2)
@@ -119,42 +119,3 @@ function rezflow_probability(m, x)
     return log_prob .+ log_normal(z)
 end
 rezflow_probability(x) = rezflow_probability(m, x)
-
-#TODO better definition of rezzidual blocks, the reziduality is comnputed inside rezidual_flow function
-res1 = Chain(Dense(2, 20, σ), Dense(20, 20, σ), Dense(20, 2))
-res2 = Chain(Dense(2, 10, σ), Dense(10, 2))
-#res2 = Chain(Dense(2, 20, σ), Dense(20, 20, σ), Dense(20, 2))
-
-#declaration of model
-m = f64(Chain(res1))
-ps = Flux.params(m)
-
-#------data generation and start of training
-x = flower(400)
-#scatter(x[1,:],x[2,:])
-opt = ADAM(0.0001)
-y = RandomBatches((x,), 100, 100)
-
-function loss_rezflow(x)
-    -mean(rezflow_probability(x))
-end
-
-function loss_single1(x)
-    arr = [single_flow(m, x[:, i]) for i in 1:size(x)[2]]
-    l = -mean(arr)
-    println(l)
-    return l
-end
-
-@show loss_single1(x)
-Flux.train!(x -> loss_single1(getobs(x)), ps, y,opt)
-#--------------------------------------------
-
-#heatmap of trained distribution
-xx = reduce(hcat,[[v[1],v[2]] for v in Iterators.product(-10.0:0.5:10.0, -10.0:0.5:10.0)])
-
-distribution_before = reshape([exp(log_normal(xx[:, i])) for i in 1:size(xx)[2]], 41, 41)
-heatmap(distribution_before)
-
-distribution_after = reshape(exp.([single_flow(m, xx[:, i]) for i in 1:1681]), 41, 41)
-heatmap(distribution_after)

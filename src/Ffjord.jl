@@ -1,6 +1,9 @@
-using Flux, LinearAlgebra, MLDataPattern, ToyProblems
-using Plots, DiffEqFlux, DifferentialEquations, Statistics
-using Zygote, DiffEqSensitivity, Distributions
+using Flux, LinearAlgebra, MLDataPattern
+using DifferentialEquations
+using Zygote
+using DiffEqSensitivity:TrackerVJP
+using DiffEqSensitivity:ZygoteVJP
+using Distributions
 
 #calculation of ϵᵀ*J*ϵ
 #asfdasdfdf
@@ -94,82 +97,3 @@ function Distributions.logpdf(m::Ffjord, x::AbstractMatrix{T}) where {T}
     x, logdet = m((x, zeros(size(x)[2])'))
     return log_normal(x) - logdet
 end
-
-
-#definition of loss function(maximum likelihood method)
-function loss_ffjord(x, p)
-    pred = predict_ffjord(x, p)
-    _pred = pred[:, :, end]
-    log_z = log_normal(_pred[1:size(x)[1]-1, :])
-
-    log_x = log_z .- _pred[end, :]'
-    loss = - mean(log_x)
-    println(loss)
-    return loss
-end
-
-function loss_cnf(x, p)
-    pred = predict_cnf(x, p)
-    _pred = pred[:, :, end]
-    log_z = log_normal(_pred[1:size(x)[1]-1, :])
-
-    log_x = log_z .- _pred[end, :]'
-    loss = - mean(log_x)
-    println(loss)
-    return loss
-end
-
-
-#----------------start of training--------------------#
-#model definition for later use
-n = 20
-m = f64(Chain(Dense(2, n, tanh), Dense(n, n, tanh), Dense(n, 2)))
-tspan = Float64.((0.0, 1.0))
-
-f = Ffjord(m, tspan)
-
-#generation of training set
-l, ρ = 100, 8
-x = flower(100)
-
-probab = Distributions.logpdf(f, x)
-
-function loss_adjoint(x)
-     l = -mean(logpdf(f, x))
-     println(l)
-     return l
- end
-loss_adjoint() = loss_adjoint(x)
-
-y = RandomBatches((x,), 100, 100)
-y2 = RandomBatches((x,), 300, 10)
-#scatter(x[1,:],x[2,:])
-#loss_cnf(getobs(y)[1][1])
-#loss_ffjord(getobs(y)[1][1])
-_data = Iterators.repeated((), 100)
-
-#training
-opt = ADAM(0.1)
-opt2 = ADAM(0.01)
-ps = Flux.params(f)
-
-Flux.Optimise.train!(loss_adjoint, ps, _data, opt)
-Flux.Optimise.train!(x -> loss_cnf(getobs(x), p), ps, y2, opt2)
-
-#                   heatmap of distribution
-#---------------------------------------------------------------
-function logpdf_cnf(x, p)
-    pred = predict_cnf(x, p)
-    _pred = pred[:, :, end]
-    log_z = log_normal(_pred[1:size(x)[1]-1, :])
-
-    log_x = log_z .- _pred[end, :]'
-end
-
-xx = reduce(hcat,[[v[1],v[2]] for v in Iterators.product(-8.0:0.5:8.0, -8.0:0.5:8.0)])
-
-distribution_before = reshape([exp(log_normal(xx[:, i])) for i in 1:size(xx)[2]], 33, 33)
-heatmap(distribution_before)
-
-distribution_after = reshape(logpdf_cnf(vcat(xx, zeros(1089)'), f.param)', 33, 33)
-heatmap(exp.(distribution_after))
