@@ -1,8 +1,8 @@
 using Flux, LinearAlgebra, MLDataPattern
 using DifferentialEquations
 using Zygote
-using DiffEqSensitivity:TrackerVJP
-using DiffEqSensitivity:ZygoteVJP
+using DiffEqSensitivity: TrackerVJP
+using DiffEqSensitivity: ZygoteVJP
 using Distributions
 using DiffEqFlux:InterpolatingAdjoint
 
@@ -30,45 +30,14 @@ function ffjord(u, m, p, e, re)
     return [u1; -eJe]
 end
 
-function jacobian(f, x::AbstractVector)
-  y::AbstractVector, back = Zygote.pullback(f, x)
-  ȳ(i) = [i == j for j = 1:length(y)]
-  vcat([transpose(back(ȳ(i))[1]) for i = 1:length(y)]...)
-end
-
-function multi_trace_jacobian(f, x::AbstractArray)
-    y::AbstractArray, back = Zygote.pullback(f, x)
-    m, n = size(y)
-    bool_y(i) = hcat([[i == j for j = 1:m] for k = 1:n]...)
-    trace = back(bool_y(1))[1][1, :]
-    for i in 2:m
-        trace = trace .+ back(bool_y(i))[1][i, :]
-    end
-    return [y; -trace']
-end
-
-function cnf(u, p, rel)
-    return multi_trace_jacobian(rel(p), u[1:2, :])
-end
-
 #ODE for FFJORD
 function diffeq_ffjord(m, x, ps, tspan, e, args...; kwargs...)
     p, re = Flux.destructure(m)
     dudt(u, p, t) = ffjord(u, m, p, e, re) #|> gpu
     prob = ODEProblem(dudt, x, tspan, ps)
 
-    return Array(concrete_solve(prob, Tsit5(), x, ps, abstol = 1e-6, reltol = 1e-3,
+    return Array(concrete_solve(prob, Tsit5(), x, ps, abstol = 1e-3, reltol = 1e-1,
                     sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())))
-end
-
-#ODE for CNF
-function diffeq_cnf(m, x, ps, tspan)
-    p, re = Flux.destructure(m)
-    dudt(u, p, t) = cnf(u, p, re)
-    prob = ODEProblem(dudt, x, tspan, ps)
-
-    return Array(concrete_solve(prob, Tsit5(), x, ps, abstol = 1e-6, reltol = 1e-3,
-    sensealg=InterpolatingAdjoint(autojacvec=DiffEqSensitivity.TrackerVJP())))
 end
 
 #log nomrla densitiy function
@@ -80,10 +49,6 @@ function predict_ffjord(m, x, p, tspan)
     v, w = size(x)
     e = randn(v-1, w)
     diffeq_ffjord(m, x, p, tspan, e)
-end
-
-function predict_cnf(x, p)
-    diffeq_cnf(m, x, p, tspan)
 end
 
 function (F::Ffjord)(xx::Tuple{A, B}) where {A, B}
