@@ -4,6 +4,7 @@ using Zygote
 using DiffEqSensitivity:TrackerVJP
 using DiffEqSensitivity:ZygoteVJP
 using Distributions
+using DiffEqFlux:InterpolatingAdjoint
 
 #calculation of ϵᵀ*J*ϵ
 #asfdasdfdf
@@ -19,7 +20,8 @@ function Ffjord(_m::M, _tspan::Tuple{T, T}) where {M, T}
     return Ffjord(_m, _tspan, p)
 end
 
-Flux.params(F::Ffjord) = Flux.params(F.param)
+Flux.@functor Ffjord
+Flux.trainable(m::Ffjord) = (m.param, )
 
 function ffjord(u, m, p, e, re)
     u1, back = Zygote.pullback(re(p), u[1:2, :])
@@ -93,7 +95,24 @@ function (F::Ffjord)(xx::Tuple{A, B}) where {A, B}
     return (x1, logdet1')
 end
 
+
+function (F::Ffjord)(xx::Tuple{A, Number}) where {A}
+    x, logdet_single = xx
+    logdet = fill(logdet_single, size(x)[2])'
+    u0 = vcat(x, logdet)
+    pred = predict_ffjord(F.m, u0, F.param, F.tspan)[:, :, end]
+    x1 = pred[1:size(x)[1], :]
+    logdet1 = pred[end, :]
+    return (x1, logdet1')
+end
+
+
+function (m::Ffjord)(x::AbstractArray)
+    y, logdet = m((x, zeros(size(x)[2])'))
+    return y
+end
+
 function Distributions.logpdf(m::Ffjord, x::AbstractMatrix{T}) where {T}
-    x, logdet = m((x, zeros(size(x)[2])'))
-    return log_normal(x) - logdet
+    y, logdet = m((x, zeros(size(x)[2])'))
+    return vec(log_normal(y) - logdet)
 end
