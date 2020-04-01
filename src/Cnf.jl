@@ -35,7 +35,7 @@ function jacobian(f, x::AbstractVector)
 end
 
 function multi_trace_jacobian(rel, p, u::AbstractArray)
-    y::AbstractArray, back = Zygote.pullback(rel(p), u[size(u)[1]-1, :])
+    y::AbstractArray, back = Zygote.pullback(rel(p), u[1:size(u)[1]-1, :])
     m, n = size(y)
     bool_y(i) = hcat([[i == j for j = 1:m] for k = 1:n]...)
     trace = back(bool_y(1))[1][1, :]

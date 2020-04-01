@@ -28,7 +28,7 @@ Flux.@functor Ffjord
 Flux.trainable(m::Ffjord) = (m.param, )
 
 function ffjord(u, m, p, e, re)
-    u1, back = Zygote.pullback(re(p), u[size(u)[1]-1, :])
+    u1, back = Zygote.pullback(re(p), u[1:size(u)[1]-1, :])
     eJ = back(e)[1]
     eJe = sum(eJ .* e, dims = 1)
     return [u1; -eJe]
