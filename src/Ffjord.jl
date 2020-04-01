@@ -9,11 +9,15 @@ using DiffEqFlux:InterpolatingAdjoint
 #calculation of ϵᵀ*J*ϵ
 #asfdasdfdf
 
+#include("Cnf.jl")
+
 struct Ffjord{M, T, P}
     m::M
     tspan::Tuple{T, T}
     param::P
 end
+
+Base.show(io::IO, a::Ffjord) = print(io, "Ffjord{$(a.m) on $(a.tspan)}")
 
 function Ffjord(_m::M, _tspan::Tuple{T, T}) where {M, T}
     p, re = Flux.destructure(_m)
@@ -24,7 +28,7 @@ Flux.@functor Ffjord
 Flux.trainable(m::Ffjord) = (m.param, )
 
 function ffjord(u, m, p, e, re)
-    u1, back = Zygote.pullback(re(p), u[1:2, :])
+    u1, back = Zygote.pullback(re(p), u[size(u)[1]-1, :])
     eJ = back(e)[1]
     eJe = sum(eJ .* e, dims = 1)
     return [u1; -eJe]
@@ -53,22 +57,22 @@ end
 
 function (F::Ffjord)(xx::Tuple{A, B}) where {A, B}
     x, logdet = xx
-    u0 = vcat(x, logdet)
+    u0 = vcat(x, -logdet)
     pred = predict_ffjord(F.m, u0, F.param, F.tspan)[:, :, end]
     x1 = pred[1:size(x)[1], :]
     logdet1 = pred[end, :]
-    return (x1, logdet1')
+    return (x1, -logdet1')
 end
 
 
 function (F::Ffjord)(xx::Tuple{A, Number}) where {A}
     x, logdet_single = xx
     logdet = fill(logdet_single, size(x)[2])'
-    u0 = vcat(x, logdet)
+    u0 = vcat(x, -logdet)
     pred = predict_ffjord(F.m, u0, F.param, F.tspan)[:, :, end]
     x1 = pred[1:size(x)[1], :]
     logdet1 = pred[end, :]
-    return (x1, logdet1')
+    return (x1, -logdet1')
 end
 
 
@@ -77,7 +81,8 @@ function (m::Ffjord)(x::AbstractArray)
     return y
 end
 
+
 function Distributions.logpdf(m::Ffjord, x::AbstractMatrix{T}) where {T}
     y, logdet = m((x, zeros(size(x)[2])'))
-    return vec(log_normal(y) - logdet)
+    return vec(log_normal(y) + logdet)
 end
