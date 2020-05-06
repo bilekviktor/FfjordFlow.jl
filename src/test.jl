@@ -1,4 +1,3 @@
-include("FfjordFlow.jl")
 include("Ffjord.jl")
 include("Cnf.jl")
 using ToyProblems
@@ -31,29 +30,34 @@ heatmap(exp.(res))
 #-------------------------------------------------------------
 include("iResNet.jl")
 include("ResidualFlow.jl")
+include("SpectralNormalization.jl")
 using ToyProblems
-using Plots
+using Plots, MLDataPattern
 
-x = sixgaussians(20)
+x = ToyProblems.flower2(1500)
+y = RandomBatches(x, 400, 20)
 lip_swish(x) = swish(x)/1.1
-m = iResNet(Chain(Chain(Dense(2, 40, tanh), Dense(40, 40, tanh), Dense(40, 2, tanh))), 5)
-y = logpdf(m, x)
+n = 20
+m = iResNet(f64(Chain(Chain(Dense(2, n, tanh), Dense(n, n, tanh),Dense(n, 2)))), 5)
 
-function loss_resnet()
-    loss = -mean(logpdf(m, x))
+
+function loss_resnet(x)
+    pred = [logpdf(m, x[:, i]) for i in 1:size(x)[2]]
+    loss = -mean(pred)
     println(loss)
+
     return loss
 end
-loss_resnet()
+loss_resnet(x)
 
 ps = Flux.params(m)
-_data = Iterators.repeated((), 1000)
+_data = Iterators.repeated((), 100)
 
-Flux.Optimise.train!(loss_resnet, ps, _data, ADAM(0.1))
-
-mm = iResNet(m, 6)
+opt = ADAM(0.01)
+sopt = SpecNormalization(0.1)
+specttrain!(x -> loss_resnet(getobs(x)), ps, y, opt, sopt, 2)
 
 xx = reduce(hcat,[[v[1],v[2]] for v in Iterators.product(-10.0:0.5:10, -10.0:0.5:10)])
 
-res = reshape(logpdf(m, xx), 41, 41)
-heatmap((res))
+res = reshape([logpdf(m, xx[:, i]) for i in 1:1681], 41, 41)
+Plots.heatmap(exp.(res))

@@ -14,17 +14,30 @@ Base.show(io::IO, a::ResidualFlow) = print(io, "ResidualFlow{$(a.m)}")
 Flux.@functor ResidualFlow
 Flux.trainable(R::ResidualFlow) = (R.m, )
 #---------------------------------------------------
+function jacobian2(f, x)
+    m = length(x)
+    bf = Zygote.Buffer(x,m, m)
+    for i in 1:m
+        bf[i, :] = gradient(x -> f(x)[i], x)[1]
+    end
+    copy(bf)
+end
 
-function jacobian(f, x::AbstractVector)
-  y::AbstractVector, back = Zygote.pullback(f, x)
-  ȳ(i) = [i == j for j = 1:length(y)]
-  vcat([transpose(back(ȳ(i))[1]) for i = 1:length(y)]...)
+Zygote.∇getindex(x::AbstractArray, inds) = dy -> begin
+  if inds isa  NTuple{<:Any,Integer}
+    dx = Zygote.Buffer(zero(x), false)
+    dx[inds...] = dy
+  else
+    dx = Zygote.Buffer(zero(x), false)
+    @views dx[inds...] .+= dy
+  end
+  (copy(dx), map(_->nothing, inds)...)
 end
 
 #function for computation of det of probability transformation
 d = Geometric(0.5)
 Zygote.@nograd sumnumber() = rand(d) + 1
-Zygote.@nograd rezidual_coef(k) = (-1)^(k+1)/(k*ccdf(d, k-2))
+Zygote.@nograd rezidual_coef(k) = ((-1)^(k+1))/(k*ccdf(d, k-2))
 #=
 function rezidual_block(m, x)
     l, _n = size(x)
@@ -45,7 +58,7 @@ function residual_block(m, x)
     e = randn(size(x))
     _n = length(x)
     n = sumnumber()
-    J = jacobian(m ,x)
+    J = jacobian2(m ,x)
     Jk = J
     sum_Jac = tr(J)
     for k in 2:n

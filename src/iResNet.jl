@@ -2,6 +2,7 @@ using Flux, Distributions, LinearAlgebra
 using Zygote
 
 include("ResidualFlow.jl")
+include("SpectralNormalization.jl")
 
 log_normal(x::AbstractVector) = - sum(x.^2) / 2 - length(x)*log(2π) / 2
 log_normal(x) = -0.5f0 .* sum(x.^2, dims = 1) .- (size(x,1)*log(Float32(2π)) / 2)
@@ -20,15 +21,28 @@ iResNet(R::ResidualFlow, n) = iResNet(R.m, n)
 Flux.@functor iResNet
 Flux.trainable(R::iResNet) = (R.m, )
 #---------------------------------------------------
+function jacobian2(f, x)
+    m = length(x)
+    bf = Zygote.Buffer(x,m, m)
+    for i in 1:m
+        bf[i, :] = gradient(x -> f(x)[i], x)[1]
+    end
+    copy(bf)
+end
 
-function jacobian(f, x::AbstractVector)
-  y::AbstractVector, back = Zygote.pullback(f, x)
-  ȳ(i) = [i == j for j = 1:length(y)]
-  vcat([transpose(back(ȳ(i))[1]) for i = 1:length(y)]...)
+Zygote.∇getindex(x::AbstractArray, inds) = dy -> begin
+  if inds isa  NTuple{<:Any,Integer}
+    dx = Zygote.Buffer(zero(x), false)
+    dx[inds...] = dy
+  else
+    dx = Zygote.Buffer(zero(x), false)
+    @views dx[inds...] .+= dy
+  end
+  (copy(dx), map(_->nothing, inds)...)
 end
 
 #function for computation of det of probability transformation
-Zygote.@nograd rezidual_coef(k) = (-1)^(k+1)/k
+Zygote.@nograd irezidual_coef(k) = ((-1)^(k+1))/k
 #=
 function rezidual_block(m, x)
     l, _n = size(x)
@@ -47,11 +61,11 @@ end
 =#
 function single_block(m, x, n)
     _n = length(x)
-    J = jacobian(m ,x)
+    J = jacobian2(m ,x)
     Jk = J
     sum_Jac = tr(J)
     for k in 2:n
-        sum_Jac = sum_Jac + rezidual_coef(k) * tr(Jk * J)
+        sum_Jac = sum_Jac + irezidual_coef(k) * tr(Jk * J)
     end
     sum_Jac
 end
@@ -84,7 +98,7 @@ function (R::iResNet)(xx::Tuple{A, B}) where {A, B}
     m = R.m
     log_det = copy(logdet')
     for i in 1:length(m)
-        log_det = log_det .+ [single_block(m[i], z[:, j], R.n) for j in 1:size(z)[2]]
+        log_det = log_det .+ single_block(m[i], z, R.n)
         z = z .+ m[i](z)
     end
     return (z, log_det')
@@ -96,4 +110,10 @@ end
 function Distributions.logpdf(R::iResNet, x::AbstractMatrix{T}) where {T}
     y, logdet = m((x, 0.0))
     return vec(log_normal(y) + logdet)
+end
+
+
+function Distributions.logpdf(R::iResNet, x::Vector) where {T}
+    y, logdet = m((x, 0.0))
+    return log_normal(y) + logdet
 end
