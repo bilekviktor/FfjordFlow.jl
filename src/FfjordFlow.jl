@@ -6,5 +6,6 @@ include("iResNet.jl")
 include("ResidualFlow.jl")
 include("SpectralNormalization.jl")
 
-export Ffjord
+export Ffjord, Cnf, iResNet
+export ResidualFlow, SpecNormalization, specttrain!
 end
