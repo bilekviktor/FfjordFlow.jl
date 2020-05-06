@@ -8,5 +8,4 @@ include("SpectralNormalization.jl")
 
 export Ffjord, Cnf, iResNet
 export ResidualFlow, SpecNormalization, specttrain!
-export logpdf
 end

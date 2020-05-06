@@ -1,9 +1,10 @@
-include("Ffjord.jl")
-include("Cnf.jl")
-using ToyProblems
+using ToyProblems, FfjordFlow, Flux
+using Statistics
 
 x = ToyProblems.flower2(200, npetals = 9)
 m = Ffjord(Chain(Dense(2, 10, tanh), Dense(10, 2)), (0.0, 1.0))
+
+y = m(x)
 
 ps = Flux.params(m)
 
@@ -38,7 +39,7 @@ x = ToyProblems.flower2(1500)
 y = RandomBatches(x, 400, 20)
 lip_swish(x) = swish(x)/1.1
 n = 20
-m = iResNet(f64(Chain(Chain(Dense(2, n, tanh), Dense(n, n, tanh),Dense(n, 2)))), 5)
+mm = iResNet(f64(Chain(Chain(Dense(2, n, tanh), Dense(n, n, tanh),Dense(n, 2)))), 5)
 
 
 function loss_resnet(x)
@@ -49,6 +50,8 @@ function loss_resnet(x)
     return loss
 end
 loss_resnet(x)
+
+logpdf(mm, x)
 
 ps = Flux.params(m)
 _data = Iterators.repeated((), 100)

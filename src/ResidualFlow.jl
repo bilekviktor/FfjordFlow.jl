@@ -106,6 +106,6 @@ end
 (R::ResidualFlow)(x::AbstractArray) = x .+ R.m(x)
 
 function Distributions.logpdf(R::ResidualFlow, x::AbstractMatrix{T}) where {T}
-    y, logdet = m((x, 0.0))
+    y, logdet = R((x, 0.0))
     return vec(log_normal(y) + logdet)
 end

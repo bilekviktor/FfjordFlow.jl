@@ -108,12 +108,12 @@ end
 (R::iResNet)(x::AbstractArray) = x .+ R.m(x)
 
 function Distributions.logpdf(R::iResNet, x::AbstractMatrix{T}) where {T}
-    y, logdet = m((x, 0.0))
+    y, logdet = R((x, 0.0))
     return vec(log_normal(y) + logdet)
 end
 
 
 function Distributions.logpdf(R::iResNet, x::Vector) where {T}
-    y, logdet = m((x, 0.0))
+    y, logdet = R((x, 0.0))
     return log_normal(y) + logdet
 end
