@@ -9,15 +9,6 @@ Base.show(io::IO, a::ResidualFlow) = print(io, "ResidualFlow{$(a.m)}")
 
 Flux.@functor ResidualFlow
 Flux.trainable(R::ResidualFlow) = (R.m, )
-#---------------------------------------------------
-function jacobian2(f, x)
-    m = length(x)
-    bf = Zygote.Buffer(x,m, m)
-    for i in 1:m
-        bf[i, :] = gradient(x -> f(x)[i], x)[1]
-    end
-    copy(bf)
-end
 
 d = Geometric(0.5)
 Zygote.@nograd sumnumber() = rand(d) + 1
@@ -42,7 +33,7 @@ function (R::ResidualFlow)(xx::Tuple{A, B}) where {A, B}
     m = R.m
     log_det = copy(logdet')
     for i in 1:length(m)
-        log_det = log_det .+ residual_block(m[i], z)
+        log_det = log_det .+ [residual_block(m[i], z[:, j]) for j in 1:size(z, 2)]
         z = z .+ m[i](z)
     end
     return (z, log_det')
@@ -63,6 +54,6 @@ function Distributions.logpdf(R::ResidualFlow, x::AbstractMatrix{T}) where {T}
 end
 
 function Distributions.logpdf(R::ResidualFlow, x::Vector)
-    y, logdet = R((x, 0.0))
+    y, logdet = R((x', 0.0))
     return log_normal(y) + logdet
 end

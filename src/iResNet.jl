@@ -35,7 +35,7 @@ function (R::iResNet)(xx::Tuple{A, B}) where {A, B}
     m = R.m
     log_det = copy(logdet')
     for i in 1:length(m)
-        log_det = log_det .+ single_block(m[i], z, R.n)
+        log_det = log_det .+ [single_block(m[i], z[:, j], R.n) for j in 1:size(z, 2)]
         z = z .+ m[i](z)
     end
     return (z, log_det')
@@ -58,6 +58,6 @@ end
 
 
 function Distributions.logpdf(R::iResNet, x::Vector) where {T}
-    y, logdet = R((x, 0.0))
+    y, logdet = R((x', 0.0))
     return log_normal(y) + logdet
 end

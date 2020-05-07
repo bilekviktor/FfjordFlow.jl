@@ -42,7 +42,7 @@ n = 20
 m = ResidualFlow(Chain(Chain(Dense(2, n, tanh), Dense(n, n, tanh),Dense(n, 2))))
 
 function loss_resnet(x)
-    pred = [logpdf(m, x[:, i]) for i in 1:size(x)[2]]
+    pred = logpdf(m, x)
     loss = -mean(pred)
     println(loss)
 
@@ -62,5 +62,5 @@ mm = iResNet(m, 5)
 
 #heatmap of result
 xx = reduce(hcat,[[v[1],v[2]] for v in Iterators.product(-10.0:0.5:10, -10.0:0.5:10)])
-res = reshape([logpdf(mm, xx[:, i]) for i in 1:1681], 41, 41)
+res = reshape(logpdf(mm, xx), 41, 41)
 Plots.heatmap(exp.(res))
