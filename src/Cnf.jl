@@ -7,7 +7,6 @@ using Distributions
 using DiffEqFlux:InterpolatingAdjoint
 
 #--------------------------
-include("Ffjord.jl")
 struct Cnf{M, T, P}
     m::M
     tspan::Tuple{T, T}
@@ -20,8 +19,6 @@ function Cnf(_m::M, _tspan::Tuple{T, T}) where {M, T}
     p, re = Flux.destructure(_m)
     return Cnf(_m, _tspan, p)
 end
-
-Cnf(F::Ffjord) = Cnf(F.m, F.tspan, F.param)
 
 Flux.@functor Cnf
 Flux.trainable(m::Cnf) = (m.param, )

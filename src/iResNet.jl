@@ -1,6 +1,5 @@
 using Flux, Distributions, LinearAlgebra
 using Zygote
-include("ResidualFlow.jl")
 
 #this structure is not yet used in upcoming code
 struct iResNet{M, I}
@@ -9,8 +8,6 @@ struct iResNet{M, I}
 end
 
 Base.show(io::IO, a::iResNet) = print(io, "iResNet{$(a.m)}")
-
-iResNet(R::ResidualFlow, n) = iResNet(R.m, n)
 
 Flux.@functor iResNet
 Flux.trainable(R::iResNet) = (R.m, )
