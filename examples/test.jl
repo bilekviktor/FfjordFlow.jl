@@ -3,6 +3,8 @@ using Statistics
 using FfjordFlow
 using Plots
 using MLDataPattern
+using Distributions
+using DiffEqFlux
 #--------------------Ffjord---------------------------------
 #dataset
 x = ToyProblems.flower2(200, npetals = 9)
@@ -15,11 +17,13 @@ function loss_adjoint()
     println(loss)
     return loss
 end
+loss_adjoint()
 
 ps = Flux.params(m)
 _data = Iterators.repeated((), 100)
 
-Flux.Optimise.train!(loss_adjoint, ps, _data, ADAM(0.1))
+opt = ADAM(0.1)
+Flux.Optimise.train!(loss_adjoint, ps, _data, opt)
 
 #converting ffjord to exact cnf model
 mm = Cnf(m)
@@ -50,7 +54,7 @@ ps = Flux.params(m)
 _data = Iterators.repeated((), 100)
 
 opt = ADAM(0.1)
-sopt = SpecNormalization(0.7) #optimeser for spectral normalization
+sopt = SpecNormalization(0.1) #optimeser for spectral normalization
 specttrain!(x -> loss_resnet(getobs(x)), ps, y, opt, sopt, 1)
 
 #converting ResidualFlow to exact iResNet model
