@@ -7,7 +7,7 @@ using Distributions
 using DiffEqFlux:InterpolatingAdjoint
 
 #--------------------------
-
+include("Ffjord.jl")
 struct Cnf{M, T, P}
     m::M
     tspan::Tuple{T, T}
@@ -49,9 +49,6 @@ function diffeq_cnf(m, x, ps, tspan)
     return Array(concrete_solve(prob, Tsit5(), x, ps, abstol = 1e-6, reltol = 1e-3,
     sensealg=InterpolatingAdjoint(autojacvec=ZygoteVJP())))
 end
-
-log_normal(x::AbstractVector) = - sum(x.^2) / 2 - length(x)*log(2π) / 2
-log_normal(x) = -0.5f0 .* sum(x.^2, dims = 1) .- (size(x,1)*log(Float32(2π)) / 2)
 
 function predict_cnf(m, x, p, tspan)
     diffeq_cnf(m, x, p, tspan)

@@ -39,10 +39,6 @@ function diffeq_ffjord(m, x, ps, tspan, e, args...; kwargs...)
                     sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())))
 end
 
-#log nomrla densitiy function
-log_normal(x::AbstractVector) = - sum(x.^2) / 2 - length(x)*log(2π) / 2
-log_normal(x) = -0.5f0 .* sum(x.^2, dims = 1) .- (size(x,1)*log(Float32(2π)) / 2)
-
 #simplification of FFJORD ode with argument for initial condition only
 function predict_ffjord(m, x, p, tspan)
     v, w = size(x)
