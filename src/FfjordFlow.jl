@@ -1,5 +1,6 @@
 module FfjordFlow
 
+include("utils.jl")
 include("Cnf.jl")
 include("Ffjord.jl")
 include("iResNet.jl")

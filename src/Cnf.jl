@@ -8,8 +8,6 @@ using DiffEqFlux:InterpolatingAdjoint
 
 #--------------------------
 
-include("Ffjord.jl")
-
 struct Cnf{M, T, P}
     m::M
     tspan::Tuple{T, T}
@@ -27,12 +25,6 @@ Cnf(F::Ffjord) = Cnf(F.m, F.tspan, F.param)
 
 Flux.@functor Cnf
 Flux.trainable(m::Cnf) = (m.param, )
-
-function jacobian(f, x::AbstractVector)
-  y::AbstractVector, back = Zygote.pullback(f, x)
-  ȳ(i) = [i == j for j = 1:length(y)]
-  vcat([transpose(back(ȳ(i))[1]) for i = 1:length(y)]...)
-end
 
 function multi_trace_jacobian(rel, p, u::AbstractArray)
     y::AbstractArray, back = Zygote.pullback(rel(p), u[1:size(u)[1]-1, :])
@@ -94,26 +86,3 @@ function Distributions.logpdf(m::Cnf, x::AbstractMatrix{T}) where {T}
     y, logdet = m((x, zeros(size(x)[2])'))
     return vec(log_normal(y) + logdet)
 end
-#=
-function (m::Ffjord)(x::AbstractArray)
-    mm = Cnf(m)
-    return mm(xx)
-end
-
-function (F::Ffjord)(xx::Tuple{A, B}) where {A, B}
-    mm = Cnf(F)
-    return mm(xx)
-end
-
-
-function (F::Ffjord)(xx::Tuple{A, Number}) where {A}
-    mm = Cnf(F)
-    return mm(xx)
-end
-
-
-function Distributions.logpdf(m::Ffjord, x::AbstractMatrix{T}) where {T}
-    mm = Cnf(m)
-    return logpdf(mm, x)
-end
-=#

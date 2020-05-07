@@ -23,42 +23,15 @@ function jacobian2(f, x)
     copy(bf)
 end
 
-Zygote.∇getindex(x::AbstractArray, inds) = dy -> begin
-  if inds isa  NTuple{<:Any,Integer}
-    dx = Zygote.Buffer(zero(x), false)
-    dx[inds...] = dy
-  else
-    dx = Zygote.Buffer(zero(x), false)
-    @views dx[inds...] .+= dy
-  end
-  (copy(dx), map(_->nothing, inds)...)
-end
-
-#function for computation of det of probability transformation
 d = Geometric(0.5)
 Zygote.@nograd sumnumber() = rand(d) + 1
 Zygote.@nograd rezidual_coef(k) = ((-1)^(k+1))/(k*ccdf(d, k-2))
-#=
-function rezidual_block(m, x)
-    l, _n = size(x)
-    n =
-    J = [jacobian(m, x[:, i]) for i in 1:_n]
 
-    Jk = J
-    sum_Jac = [tr(J[i]) for i in 1:_n]
-    for k in 2:n
-        Jk = [Jk[i] * J[i] for i in 1:_n]
-        new_tr = [tr(rezidual_coef(k).*Jk[i]) for i in 1:_n]
-        sum_Jac = sum_Jac .+ new_tr
-    end
-    return sum_Jac
-end
-=#
 function residual_block(m, x)
     e = randn(size(x))
     _n = length(x)
     n = sumnumber()
-    J = jacobian2(m ,x)
+    J = jacobian(m ,x)
     Jk = J
     sum_Jac = tr(J)
     for k in 2:n
@@ -66,46 +39,34 @@ function residual_block(m, x)
     end
     sum_Jac
 end
-#=
-function residual_flow(m, x)
-    z = copy(x)
-    log_prob = 0.0
-    for i in 1:length(m)
-        log_prob = log_prob + single_block(m[i], z)
-        z = identity(z) .+ m[i](z)
-    end
-    return log_normal(z) + log_prob
-end
-=#
-#function for computation of probability of given data
-#=
-function rezidual_flow(m, x)
-    z = copy(x)
-    log_prob = zeros(size(x)[2])
-    for i in 1:length(m)
-        log_prob = log_prob .+ rezidual_block(m[i], z)
-        #here is computed residuality of neural network
-        z = z .+ m[i](z)
-    end
-    return (z, reshape(log_prob, 1, :))
-end
-=#
+
 function (R::ResidualFlow)(xx::Tuple{A, B}) where {A, B}
     x, logdet = xx
     z = copy(x)
     m = R.m
     log_det = copy(logdet')
     for i in 1:length(m)
-        log_det = log_det .+ [residual_block(m[i], z[:, j]) for j in 1:size(z)[2]]
+        log_det = log_det .+ residual_block(m[i], z)
         z = z .+ m[i](z)
     end
     return (z, log_det')
 end
 
-
-(R::ResidualFlow)(x::AbstractArray) = x .+ R.m(x)
+function (R::ResidualFlow)(x::AbstractArray)
+    m = R.m
+    z = x
+    for i in 1:length(m)
+        z = z .+ m[i](z)
+    end
+    return z
+end
 
 function Distributions.logpdf(R::ResidualFlow, x::AbstractMatrix{T}) where {T}
     y, logdet = R((x, 0.0))
     return vec(log_normal(y) + logdet)
+end
+
+function Distributions.logpdf(R::ResidualFlow, x::Vector)
+    y, logdet = R((x, 0.0))
+    return log_normal(y) + logdet
 end

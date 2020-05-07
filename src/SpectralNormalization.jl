@@ -51,41 +51,7 @@ function specttrain!(loss, ps, data, opt, sopt, normnumber = 5)
     end
 end
 #-----------------------------------------------------------
-
-mutable struct SpectralADAM
-  eta::Float64
-  beta::Tuple{Float64,Float64}
-  state::IdDict
-end
-SpectralADAM(η = 0.001, β = (0.9, 0.999)) = SpectralADAM(η, β, IdDict())
-
-function apply!(o::SpectralADAM, x::Matrix, Δ)
-  η, β = o.eta, o.beta
-  mt, vt, βp, u = get!(o.state, x, (zero(x), zero(x), β, randn(size(x, 1))))
-  println("zk")
-  @. mt = β[1] * mt + (1 - β[1]) * Δ
-  @. vt = β[2] * vt + (1 - β[2]) * Δ^2
-  v = transpose(x) * u
-  v = v./norm(v)
-  u = x * v
-  u = u./norm(u)
-  σ = transpose(u) * x * v
-  @. Δ =  mt / (1 - βp[1]) / (√(vt / (1 - βp[2])) + ϵ) * η
-  Δ = Δ .+ (σ-1)/σ * (x .- Δ)
-  o.state[x] = (mt, vt, βp .* β, u)
-  return Δ
-end
-
-function apply!(o::SpectralADAM, x::Vector, Δ)
-  η, β = o.eta, o.beta
-  mt, vt, βp = get!(o.state, x, (zero(x), zero(x), β))
-  @. mt = β[1] * mt + (1 - β[1]) * Δ
-  @. vt = β[2] * vt + (1 - β[2]) * Δ^2
-  @. Δ =  mt / (1 - βp[1]) / (√(vt / (1 - βp[2])) + ϵ) * η
-  o.state[x] = (mt, vt, βp .* β)
-  return Δ
-end
-#---------------------------------------------------
+#=
 struct SpectralDense{F,S,T}
   W::S
   b::T
@@ -111,13 +77,14 @@ Zygote.@nograd function spectralcoef(S::SpectralDense)
   u = u./norm(u)
   S.dict[W] = u
   spec = transpose(u) * W * v
+  return 0.1 * spec
 end
 
 
 function (S::SpectralDense)(x::AbstractArray)
   W, b, σ = S.W, S.b, S.σ
   #u = get!(s.dict, W, randn(size(W, 1)))
-  spec = norm(W)
+  spec = spectralcoef(S)
   #println("norm: ", norm(W./spec))
   return σ.((W./Zygote.nograd(spec))*x .+ b)
 end
@@ -127,17 +94,4 @@ end
 
 (a::SpectralDense{<:Any,W})(x::AbstractArray{<:AbstractFloat}) where {T <: Union{Float32,Float64}, W <: AbstractArray{T}} =
   a(T.(x))
-#=
-m = Chain(SpectralDense(2, 10, tanh), SpectralDense(10, 2))
-x = rand(2, 100)
-function loss()
-  l = sum(abs2, m(x))
-  println(l)
-  return l
-end
-
-ps = Flux.params(m)
-_data = Iterators.repeated((), 1000)
-opt = ADAM(0.1)
-Flux.Optimise.train!(loss, ps, _data, opt)
 =#

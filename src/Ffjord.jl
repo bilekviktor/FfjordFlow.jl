@@ -6,11 +6,6 @@ using DiffEqSensitivity: ZygoteVJP
 using Distributions
 using DiffEqFlux:InterpolatingAdjoint
 
-#calculation of ϵᵀ*J*ϵ
-#asfdasdfdf
-
-#include("Cnf.jl")
-
 struct Ffjord{M, T, P}
     m::M
     tspan::Tuple{T, T}
