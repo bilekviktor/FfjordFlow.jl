@@ -51,29 +51,6 @@ function resflow_to_iresnet(model)
 	return SumNode(_c, model.prior)
 end
 
-function plot_contour(m, x)
-	levels = quantile(exp.(logpdf(m, x)), 0.01:0.09:0.99)
-	xr = range(minimum(x[1,:]) - 1 , maximum(x[1,:])+ 1 , length = 200)
-	yr = range(minimum(x[2,:]) - 1 , maximum(x[2,:])+ 1 , length = 200)
-	# contour(xr, yr, (x...) ->  logpdf(m, [x[1],x[2]])[1], levels = levels)
-	# heatmap(xr, yr, (x...) ->  exp(logpdf(m, [x[1],x[2]])[1]))
-	# scatter!(x[1,:], x[2,:])
-	contour(xr, yr, (x...) ->  exp(logpdf(m, [x[1],x[2]])[1]))
-end
-
-function plot_components(m, x)
-	path = hash.(mappath(m, x)[2])
-	u = unique(path)
-	hash2int = Dict(u[i] => i for i in 1:length(u))
-	i = [hash2int[k] for k in path]
-	scatter(x[1,:], x[2,:], color = i)
-end
-
-function plot_rand(m, n)
-	xx = reduce(hcat, rand(m) for i in 1:n)
-	scatter(xx[1,:], xx[2,:])
-end
-
 function buildmff(n)
 	SumNode([DenseNode(Ffjord(Chain(Dense(2, 10, tanh), Dense(10, 2)),
 	 					(0.0, 1.0)), MvNormal(2,1f0)) for i in 1:n])
