@@ -63,3 +63,18 @@ end
     l2 = -mean(logpdf(mm, x))
     @test isapprox(l1, l2, atol = 1.0)
 end
+
+@testset "Likelihood training via Cnf 2-D" begin
+    mu = Float32[10.0; 20.0]
+    sigma = Float32[1.0 0.0; 0.0 1.0]
+    d = MvNormal(mu, sigma)
+    x = rand(d, 100)
+    m = Cnf(Dense(2,2), (0.0, 1.0))
+    loss() = -mean(logpdf(m, x))
+    l1 = loss()
+    ps = Flux.params(m)
+    opt = ADAM(0.1)
+    Flux.Optimise.train!(loss, ps, Iterators.repeated((), 10), opt)
+    l2 = loss()
+    @test 10*l2 < l1
+end
