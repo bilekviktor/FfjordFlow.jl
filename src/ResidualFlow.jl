@@ -12,10 +12,10 @@ Flux.trainable(R::ResidualFlow) = (R.m, )
 
 d = Geometric(0.5)
 Zygote.@nograd sumnumber() = rand(d) + 1
-Zygote.@nograd rezidual_coef(k) = ((-1)^(k+1))/(k*ccdf(d, k-2))
+Zygote.@nograd rezidual_coef(k) = convert(Float32, ((-1)^(k+1))/(k*ccdf(d, k-2)))
 
 function residual_block(m, x)
-    e = randn(size(x))
+    e = randn(Float32, size(x))
     _n = length(x)
     n = sumnumber()
     J = jacobian(m ,x)
@@ -41,7 +41,7 @@ end
 
 function (R::ResidualFlow)(x::AbstractArray)
     m = R.m
-    z = x
+    z = copy(x)
     for i in 1:length(m)
         z = z .+ m[i](z)
     end
@@ -49,11 +49,11 @@ function (R::ResidualFlow)(x::AbstractArray)
 end
 
 function Distributions.logpdf(R::ResidualFlow, x::AbstractMatrix{T}) where {T}
-    y, logdet = R((x, 0.0))
+    y, logdet = R((x, zero(T)))
     return vec(log_normal(y) + logdet)
 end
 
-function Distributions.logpdf(R::ResidualFlow, x::Vector)
-    y, logdet = R((x', 0.0))
+function Distributions.logpdf(R::ResidualFlow, x::Vector{T}) where {T}
+    y, logdet = R((x', zero(T)))
     return log_normal(y) + logdet
 end

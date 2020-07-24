@@ -17,13 +17,14 @@ function Flux.Optimise.apply!(o::SpecNormalization, x::Matrix, Δ)
     σ = transpose(u) * x * v
     #σ = norm(x)
     o.u[x] = u
-    Δ = (o.α) .* (σ-1)/σ .* x
+    Δ .+= (o.α) .* (σ-1)/σ .* x
+    #Δ .*= σ
 end
 
 function Flux.Optimise.apply!(o::SpecNormalization, x::Vector, Δ)
   #σ = norm(x)
   #Δ = (o.α) .* (σ-1)/σ .* x
-  return 0.0
+  return Δ
 end
 
 
@@ -32,7 +33,7 @@ function specttrain!(loss, ps, data, opt, sopt, normnumber = 5)
     for d in data
         for p in ps
           for i in 1:normnumber
-              Δ = Flux.Optimise.apply!(sopt, p, 0.0)
+              Δ = Flux.Optimise.apply!(sopt, p, zero(p))
               p .-= Δ
               #println("norm: ", norm(p))
           end
