@@ -17,7 +17,7 @@ function Flux.Optimise.apply!(o::SpecNormalization, x::Matrix, Δ)
     σ = transpose(u) * x * v
     #σ = norm(x)
     o.u[x] = u
-    Δ .+= -(o.α) .* (σ-1)/σ .* x
+    Δ .+= (o.α) .* (σ-1)/σ .* x
     #Δ .*= σ
 end
 
