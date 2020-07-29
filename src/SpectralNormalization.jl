@@ -10,15 +10,29 @@ SpecNormalization(alpha = 1.0) = SpecNormalization(alpha, IdDict())
 
 function Flux.Optimise.apply!(o::SpecNormalization, x::Matrix, Δ)
     u = get!(o.u, x, randn(size(x, 1)))
-    v = transpose(x) * u
+    xm = x
+    v = transpose(xm) * u
     v = v./norm(v)
-    u = x * v
+    u = xm * v
     u = u./norm(u)
-    σ = transpose(u) * x * v
-    #σ = norm(x)
+    σ = transpose(u) * xm * v
+    if (o.α)/σ < 1.01
+        σ = σ/o.α
+    else
+        σ = 1.0
+    end
+    ####test
+        #xt = xm .- ((σ-1)/σ .* xm)
+        #vt = transpose(xt) * u
+        #vt = vt./norm(vt)
+        #ut = xt * vt
+        #ut = ut./norm(ut)
+        #σt = transpose(ut) * xt * vt
+        #println("new sigma: ", σt)
+    ########
+    println("1/sigma: ", 1.0/σ)
     o.u[x] = u
-    Δ .+= (o.α) .* (σ-1)/σ .* x
-    #Δ .*= σ
+    Δ .*= 1.0/σ
 end
 
 function Flux.Optimise.apply!(o::SpecNormalization, x::Vector, Δ)
@@ -28,7 +42,7 @@ function Flux.Optimise.apply!(o::SpecNormalization, x::Vector, Δ)
 end
 
 
-function specttrain!(loss, ps, data, opt, sopt, normnumber = 5)
+function specttrain!(loss, ps, data, opt, sopt, normnumber = 1)
     ps = Zygote.Params(ps)
     for d in data
         for p in ps
@@ -39,7 +53,7 @@ function specttrain!(loss, ps, data, opt, sopt, normnumber = 5)
           end
         end
         #println("norm_before: ", norm(first(ps)))
-        gs = gradient(() -> loss(d), ps)
+        gs = gradient(() -> loss(), ps)
         Flux.Optimise.update!(opt, ps, gs)
         #println("norm_after: ", norm(first(ps)))
     end
@@ -52,7 +66,7 @@ function specttrain!(loss, ps, data, opt, sopt, normnumber = 5)
     end
 end
 #-----------------------------------------------------------
-#=
+
 struct SpectralDense{F,S,T}
   W::S
   b::T
@@ -84,10 +98,16 @@ end
 
 function (S::SpectralDense)(x::AbstractArray)
   W, b, σ = S.W, S.b, S.σ
+  u = get_u(S)
+  v = transpose(W) * u
+  v = v./norm(v)
+  u = W * v
+  u = u./norm(u)
+  S.dict[W] = u
+  spec = transpose(u) * W * v
   #u = get!(s.dict, W, randn(size(W, 1)))
-  spec = spectralcoef(S)
   #println("norm: ", norm(W./spec))
-  return σ.((W./Zygote.nograd(spec))*x .+ b)
+  return σ.((W./spec)*x .+ b)
 end
 
 (a::SpectralDense{<:Any,W})(x::AbstractArray{T}) where {T <: Union{Float32,Float64}, W <: AbstractArray{T}} =
@@ -95,4 +115,3 @@ end
 
 (a::SpectralDense{<:Any,W})(x::AbstractArray{<:AbstractFloat}) where {T <: Union{Float32,Float64}, W <: AbstractArray{T}} =
   a(T.(x))
-=#

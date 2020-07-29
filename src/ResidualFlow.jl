@@ -20,9 +20,10 @@ function residual_block(m, x)
     n = sumnumber()
     J = jacobian(m ,x)
     Jk = J
-    sum_Jac = tr(J)
+    sum_Jac = e' *(Jk*e)
     for k in 2:n
-        sum_Jac = sum_Jac + rezidual_coef(k) * (e' *(J*e))
+        Jk = Jk * J
+        sum_Jac = sum_Jac + rezidual_coef(k) * (e' *(Jk*e))
     end
     sum_Jac
 end
