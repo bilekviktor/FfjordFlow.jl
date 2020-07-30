@@ -21,6 +21,7 @@ function single_block(m, x, n)
     Jk = J
     sum_Jac = tr(J)
     for k in 2:n
+        Jk = Jk * J
         sum_Jac = sum_Jac + irezidual_coef(k) * tr(Jk * J)
     end
     sum_Jac

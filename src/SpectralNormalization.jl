@@ -10,7 +10,7 @@ SpecNormalization(alpha = 1.0) = SpecNormalization(alpha, IdDict())
 
 function Flux.Optimise.apply!(o::SpecNormalization, x::Matrix, Δ)
     u = get!(o.u, x, randn(size(x, 1)))
-    xm = x
+    xm = x .- Δ
     v = transpose(xm) * u
     v = v./norm(v)
     u = xm * v
@@ -30,9 +30,9 @@ function Flux.Optimise.apply!(o::SpecNormalization, x::Matrix, Δ)
         #σt = transpose(ut) * xt * vt
         #println("new sigma: ", σt)
     ########
-    println("1/sigma: ", 1.0/σ)
+    #println("sigma: ", σ)
     o.u[x] = u
-    Δ .*= 1.0/σ
+    Δ = Δ .+ ((σ-1)/σ) .* xm
 end
 
 function Flux.Optimise.apply!(o::SpecNormalization, x::Vector, Δ)
@@ -115,3 +115,5 @@ end
 
 (a::SpectralDense{<:Any,W})(x::AbstractArray{<:AbstractFloat}) where {T <: Union{Float32,Float64}, W <: AbstractArray{T}} =
   a(T.(x))
+
+##############################333
