@@ -7,7 +7,7 @@ using Distributions
 using DiffEqFlux
 #--------------------Ffjord---------------------------------
 #dataset
-x = ToyProblems.flower2(200, npetals = 9)
+x = ToyProblems.flower2(1000, npetals = 9)
 #ffjord model
 m = Ffjord(Chain(Dense(2, 10, tanh), Dense(10, 2)), (0.0, 1.0))
 
@@ -29,8 +29,8 @@ Flux.Optimise.train!(loss_adjoint, ps, _data, opt)
 mm = Cnf(m)
 
 #heatmap of result
-xx = reduce(hcat,[[v[1],v[2]] for v in Iterators.product(-10.0:0.5:10, -10.0:0.5:10)])
-res = reshape(logpdf(mm, xx), 41, 41)
+xx = reduce(hcat,[[v[1],v[2]] for v in Iterators.product(-10.0:0.1:10, -10.0:0.1:10)])
+res = reshape(logpdf(mm, xx), 201, 201)
 heatmap(exp.(res))
 #----------------------------ResidualFlow---------------------------------
 #generating dataset
