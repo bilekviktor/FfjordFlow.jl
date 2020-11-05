@@ -10,35 +10,31 @@ SpecNormalization(alpha = 1.0) = SpecNormalization(alpha, IdDict())
 
 function Flux.Optimise.apply!(o::SpecNormalization, x::Matrix, Δ)
     u = get!(o.u, x, randn(size(x, 1)))
-    xm = x .- Δ
-    v = transpose(xm) * u
+    x .-= Δ
+    v = transpose(x) * u
     v = v./norm(v)
-    u = xm * v
+    u = x * v
     u = u./norm(u)
-    σ = transpose(u) * xm * v
+    σ = transpose(u) * x * v
+    #println("sigma: ", σ)
     if (o.α)/σ < 1.01
         σ = σ/o.α
     else
         σ = 1.0
     end
-    ####test
-        #xt = xm .- ((σ-1)/σ .* xm)
-        #vt = transpose(xt) * u
-        #vt = vt./norm(vt)
-        #ut = xt * vt
-        #ut = ut./norm(ut)
-        #σt = transpose(ut) * xt * vt
-        #println("new sigma: ", σt)
-    ########
-    #println("sigma: ", σ)
     o.u[x] = u
-    Δ = Δ .+ ((σ-1)/σ) .* xm
+    #λ = maximum([one(σ), σ/o.α])
+    x .*= 1/σ
+    Δ = zero(Δ)
+    return Δ
 end
 
-function Flux.Optimise.apply!(o::SpecNormalization, x::Vector, Δ)
+function Flux.Optimise.apply!(o::SpecNormalization, x, Δ)
   #σ = norm(x)
   #Δ = (o.α) .* (σ-1)/σ .* x
-  return Δ
+  #x .*= 1/norm(x)
+  x .-= Δ
+  return zero(Δ)
 end
 
 
@@ -48,7 +44,7 @@ function specttrain!(loss, ps, data, opt, sopt, normnumber = 1)
         for p in ps
           for i in 1:normnumber
               Δ = Flux.Optimise.apply!(sopt, p, zero(p))
-              p .-= Δ
+              p .*= Δ
               #println("norm: ", norm(p))
           end
         end

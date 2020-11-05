@@ -19,10 +19,10 @@ function single_block(m, x, n)
     _n = length(x)
     J = jacobian(m ,x)
     Jk = J
-    sum_Jac = tr(J)
+    sum_Jac = tr(Jk)
     for k in 2:n
         Jk = Jk * J
-        sum_Jac = sum_Jac + irezidual_coef(k) * tr(Jk * J)
+        sum_Jac = sum_Jac + irezidual_coef(k) * tr(Jk)
     end
     sum_Jac
 end
@@ -32,9 +32,15 @@ function (R::iResNet)(xx::Tuple{A, B}) where {A, B}
     z = copy(x)
     m = R.m
     log_det = copy(logdet')
+    n = size(z, 2)
     for i in 1:length(m)
-        log_det = log_det .+ [single_block(m[i], z[:, j], R.n) for j in 1:size(z, 2)]
-        z = z .+ m[i](z)
+        mm = m[i][1]
+        d = m[i][2]
+        log_det = log_det .+ [single_block(mm, z[:, j], R.n) for j in 1:n]
+        z = z .+ mm(z)
+
+        log_det = log_det .+ (1 * log(abs(prod(d.α))))
+        z = d(z)
     end
     return (z, log_det')
 end
@@ -45,13 +51,14 @@ function (R::iResNet)(x::AbstractArray)
     z = x
     for i in 1:length(m)
         z = z .+ m[i](z)
+        z = 0.2 .* z
     end
-    return z
+    return 0.0
 end
 
 function Distributions.logpdf(R::iResNet, x::AbstractMatrix{T}) where {T}
     y, logdet = R((x, 0.0))
-    return vec(log_normal(y) + logdet)
+    return vec(log_normal(y) .+ logdet)
 end
 
 

@@ -23,7 +23,7 @@ function residual_block(m, x)
     sum_Jac = e' *(Jk*e)
     for k in 2:n
         Jk = Jk * J
-        sum_Jac = sum_Jac + rezidual_coef(k) * (e' *(Jk*e))
+        sum_Jac += rezidual_coef(k) * (e' *(Jk*e))
     end
     sum_Jac
 end
