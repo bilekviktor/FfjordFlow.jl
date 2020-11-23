@@ -1,5 +1,5 @@
 using Flux, LinearAlgebra, MLDataPattern
-using DifferentialEquations
+using OrdinaryDiffEq
 using Zygote
 using DiffEqSensitivity: TrackerVJP
 using DiffEqSensitivity: ZygoteVJP
@@ -22,7 +22,7 @@ end
 Flux.@functor Ffjord
 Flux.trainable(m::Ffjord) = (m.param, )
 
-function ffjord(u, m, p, e, re)
+function ffjord(u, p, e, re)
     u1, back = Zygote.pullback(re(p), u[1:size(u)[1]-1, :])
     eJ = back(e)[1]
     eJe = sum(eJ .* e, dims = 1)
@@ -32,10 +32,10 @@ end
 #ODE for FFJORD
 function diffeq_ffjord(m, x, ps, tspan, e, args...; kwargs...)
     p, re = Flux.destructure(m)
-    dudt(u, p, t) = ffjord(u, m, p, e, re) #|> gpu
-    prob = ODEProblem(dudt, x, tspan, ps)
+    dudt(u, p, t) = ffjord(u, p, e, re) #|> gpu
+    prob = ODEProblem(dudt, x, tspan, p)
 
-    return Array(concrete_solve(prob, Tsit5(), x, ps, abstol = 1e-3, reltol = 1e-1,
+    return Array(solve(prob, Tsit5(), u0=x, p=ps, abstol = 1e-3, reltol = 1e-1,
                     sensealg = InterpolatingAdjoint(autojacvec = ZygoteVJP())))
 end
 

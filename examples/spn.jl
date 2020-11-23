@@ -1,6 +1,6 @@
-using ToyProblems, Distributions, SumDenseProduct, Unitary, Flux, Setfield
+using ToyProblems, Distributions, SumProductTransform, Unitary, Flux
 using Flux:throttle
-using SumDenseProduct: fit!, mappath, samplepath
+using SumProductTransform: fit!
 using ToyProblems: flower2
 
 using Plots

@@ -43,7 +43,7 @@ function diffeq_cnf(m, x, ps, tspan)
     dudt(u, p, t) = cnf(u, p, re)
     prob = ODEProblem(dudt, x, tspan, ps)
 
-    return Array(concrete_solve(prob, Tsit5(), x, ps, abstol = 1e-6, reltol = 1e-3,
+    return Array(solve(prob, Tsit5(), u0=x, p=ps, abstol = 1e-6, reltol = 1e-3,
     sensealg=InterpolatingAdjoint(autojacvec=ZygoteVJP())))
 end
 
