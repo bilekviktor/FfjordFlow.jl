@@ -1,5 +1,5 @@
 using Flux, LinearAlgebra, MLDataPattern
-using DifferentialEquations
+using OrdinaryDiffEq
 using Zygote
 using DiffEqSensitivity: TrackerVJP
 using DiffEqSensitivity: ZygoteVJP
